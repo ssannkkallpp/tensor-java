@@ -1,8 +1,10 @@
 package com.google.mattmo;
 
-import java.util.Arrays;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.markit.mtk.collections.ArrayUtils;
 
-public final class IndexUtils
+final class IndexUtils
 {
   private IndexUtils()
   {
@@ -27,6 +29,25 @@ public final class IndexUtils
     return retVal;
   }
 
+  public static int[] add(int[] array, int[] indices, int[] values)
+  {
+    if (indices.length == 0)
+      return array;
+
+    int[] retVal = new int[array.length+indices.length];
+
+    for (int i = 0,newIndex =0,arrayIndex=0;i<retVal.length;i++)
+    {
+      if(newIndex < indices.length && i == indices[newIndex])
+        retVal[i] = values[newIndex++];
+      else
+        retVal[i] = array[arrayIndex++];
+    }
+
+    return retVal;
+  }
+
+  
   public static int[] remove(int[] array, int[] indices)
   {
     if (indices.length == 0)
@@ -47,6 +68,38 @@ public final class IndexUtils
 
     return retVal;
   }
+
+  public static IndexInfo nonNullIndexInfo(Integer... index)
+  {
+    Iterable<Integer> iterable = Iterables.filter(ArrayUtils.iterable(index),new Predicate<Integer>()
+    {
+      @Override
+      public boolean apply(Integer integer)
+      {
+        return integer!=null;
+      }
+    });
+
+    int size = Iterables.size(iterable);
+    int[] fixedPos = new int[size];
+    int[] fixedPVal = new int[size];
+
+    for(int i = 0,j=0;i<index.length;i++)
+    {
+      if(index[i]!=null)
+      {
+        fixedPos[j]=i;
+        fixedPVal[j++]=index[i];
+      }
+
+    }
+
+    return new IndexInfo(fixedPos,fixedPVal);
+  }
+
+
+
+
 
   public static int calcNumElements(int[] indexSizes)
   {
@@ -113,94 +166,7 @@ public final class IndexUtils
     return coordinate;
   }
 
-  public static int[] generateFullIndex(int[] index, int indexSizesLen, int[] fixedIndexPositions, int[] fixedIndexValues)
-  {
-    int[] ret = new int[indexSizesLen];
-    Arrays.fill(ret, -1);
-
-    for (int i = 0; i < fixedIndexPositions.length; i++)
-      ret[fixedIndexPositions[i]] = fixedIndexValues[i];
-
-    int subCount = 0;
-    int count = 0;
-
-    for (int i : ret)
-    {
-      if (i == -1)
-        ret[count] = index[subCount++];
-      count++;
-    }
-
-    return ret;
-  }
-
-  public static FixedIndexInfo mergeFixedIndices(int[] existingFixedIndexPositions, int[] existingFixedIndexValues,
-                                                 int[] newFixedIndexPositions, int[] newFixedIndexValues)
-  {
-    int newLen = newFixedIndexPositions.length;
-    int oldLen = existingFixedIndexPositions.length;
-    int retLen = newLen + oldLen;
-
-    int[] fixedIndexPositions = new int[retLen];
-    int[] fixedIndexValues = new int[retLen];
-
-    //merge ordered lists.
-    for (int i = 0, p = 0, q = 0; i < retLen; i++)
-    {
-      if (q >= oldLen || p < newLen && fixedIndexPositions[q] <= existingFixedIndexPositions[p])
-      {
-        fixedIndexPositions[i] = newFixedIndexPositions[i];
-        fixedIndexValues[i] = newFixedIndexValues[i];
-      }
-      else
-      {
-        fixedIndexPositions[i] = existingFixedIndexPositions[i];
-        fixedIndexValues[i] = existingFixedIndexValues[i];
-      }
-    }
-
-    return new FixedIndexInfo(fixedIndexPositions, fixedIndexValues);
-  }
-
-  public static FixedIndexInfo generateFixedIndicesInfo(Integer[] array)
-  {
-    int keyCount = 0;
-
-    for (Integer i : array)
-      if (i != null) keyCount++;
-
-    int[] fixedPositions = new int[keyCount];
-    int[] fixedValues = new int[keyCount];
-
-
-    for (int i = 0, j = 0; i < array.length; i++)
-    {
-      if (array[i] != null)
-      {
-        fixedPositions[j] = i;
-        fixedValues[j] = array[i];
-        j++;
-      }
-    }
-
-    return new FixedIndexInfo(fixedPositions, fixedValues);
-
-  }
-
-  public static <E> E[] newArray(Iterable<? extends E> iterable, int arrayLength)
-  {
-    int i = 0;
-
-    @SuppressWarnings("unchecked")
-    E[] array = (E[]) new Object[arrayLength];
-
-    for (E e : iterable)
-    {
-      array[i++] = e;
-    }
-
-    return array;
-  }
+  
 }
 
 

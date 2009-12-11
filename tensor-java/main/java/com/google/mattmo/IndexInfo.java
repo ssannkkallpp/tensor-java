@@ -7,12 +7,12 @@ package com.google.mattmo;
  * Time: 2:09:25 AM
  * To change this template use File | Settings | File Templates.
  */
-final public class FixedIndexInfo
+final class IndexInfo
 {
   private final int[] indexValues;
   private final int[] indexPositions;
 
-  public FixedIndexInfo(int[] indexPositions, int[] indexValues)
+  public IndexInfo(int[] indexPositions, int[] indexValues)
   {
     this.indexValues = indexValues;
     this.indexPositions = indexPositions;

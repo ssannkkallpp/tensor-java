@@ -1,6 +1,7 @@
 package com.google.mattmo;
 
 import com.google.common.base.Function;
+import com.markit.mtk.collections.func.BinaryFunction;
 
 public final class TensorOperations
 {
