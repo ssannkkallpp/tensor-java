@@ -1,16 +1,10 @@
 package com.google.mattmo;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-import com.markit.mtk.collections.ArrayUtils;
-
 final class IndexUtils
 {
   private IndexUtils()
   {
   }
-
-  ;
 
   public static int[] retain(int[] array, int[] indices)
   {
@@ -68,38 +62,6 @@ final class IndexUtils
 
     return retVal;
   }
-
-  public static IndexInfo nonNullIndexInfo(Integer... index)
-  {
-    Iterable<Integer> iterable = Iterables.filter(ArrayUtils.iterable(index),new Predicate<Integer>()
-    {
-      @Override
-      public boolean apply(Integer integer)
-      {
-        return integer!=null;
-      }
-    });
-
-    int size = Iterables.size(iterable);
-    int[] fixedPos = new int[size];
-    int[] fixedPVal = new int[size];
-
-    for(int i = 0,j=0;i<index.length;i++)
-    {
-      if(index[i]!=null)
-      {
-        fixedPos[j]=i;
-        fixedPVal[j++]=index[i];
-      }
-
-    }
-
-    return new IndexInfo(fixedPos,fixedPVal);
-  }
-
-
-
-
 
   public static int calcNumElements(int[] indexSizes)
   {

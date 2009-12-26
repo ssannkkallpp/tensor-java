@@ -17,21 +17,29 @@ import static com.google.mattmo.ArrayUtils.newArray;
  * Abstract implementation of a Tensor, the only methods that need to be implemented are the get method and the indexSizes
  * Method.
  */
-public abstract class AbstractImmutableTensor<E> implements Tensor<E>
+public final class DefaultTensor<E> implements Tensor<E>
 {
+  private final IndexedGetter<E> _indexedGetter;
   private final int[] _indexSizes;
   private final int _order;
   private final int _size;
 
-  protected AbstractImmutableTensor(int... indexSizes)
+  private DefaultTensor(IndexedGetter<E> aIndexedGetter,
+                       int[] aIndexSizes,
+                       int aOrder,
+                       int aSize)
   {
-    _indexSizes = Arrays.copyOf(indexSizes,indexSizes.length); //take a defensive copy...
-    _order = _indexSizes.length;
-    _size = IndexUtils.calcNumElements(_indexSizes);
+    _indexedGetter = aIndexedGetter;
+    _indexSizes = aIndexSizes;
+    _order = aOrder;
+    _size = aSize;
   }
 
   @Override
-  public abstract E get(int... tensorIndex);
+  public E get(int... tensorIndex)
+  {
+    return _indexedGetter.get(tensorIndex);
+  }
 
   @Override
   public int[] indexSizes()
@@ -70,66 +78,7 @@ public abstract class AbstractImmutableTensor<E> implements Tensor<E>
       }
     };
   }
-
-//  @Override
-//  public Tensor<E> contract(Integer... index)
-//  {
-//    if(index.length!=indexSizes().length)
-//      throw new IllegalArgumentException("Index must have length = "+index.length);
-//
-//    IndexInfo indexInfo = IndexUtils.nonNullIndexInfo(index);
-//
-//    return subTensor(indexInfo.indexPositions(), indexInfo.indexValues());
-//  }
-
-  @Override
-  public Tensor<E> contract(final int[] fixedPos,final int[] fixedVal)
-  {
-    final int[] subIndexSizes = IndexUtils.remove(indexSizes(),fixedPos);
-    return new AbstractImmutableTensor<E>(subIndexSizes)
-    {
-      @Override
-      public E get(int... tensorIndex)
-      {
-        int[] fullIndex = IndexUtils.add(tensorIndex,fixedPos,fixedVal);
-        return AbstractImmutableTensor.this.get(fullIndex);
-      }
-    };
-  }
-
-  @Override
-  public Iterable<Tensor<E>> contractedTensorIterable(final int... iteratingIndexPositions)
-  {
-    if (iteratingIndexPositions.length >= indexSizes().length)
-      throw new IllegalArgumentException();
-
-    final int[] iteratingIndexSizes = IndexUtils.retain(indexSizes(), iteratingIndexPositions);
-    final int[] basis = IndexUtils.createBasis(iteratingIndexSizes);
-    final int numElements = IndexUtils.calcNumElements(iteratingIndexSizes);
-
-    return new Iterable<Tensor<E>>()
-    {
-      @Override
-      public Iterator<Tensor<E>> iterator()
-      {
-        return new AbstractIterator<Tensor<E>>()
-        {
-          private int count = 0;
-
-          @Override
-          protected Tensor<E> computeNext()
-          {
-            if (count < numElements)
-              return contract(iteratingIndexPositions, IndexUtils.projectIndex(count++, basis));
-            return endOfData();
-          }
-        };
-      }
-    };
-  }
-
-
-
+  
   @Override
   public String toString()
   {
@@ -146,9 +95,9 @@ public abstract class AbstractImmutableTensor<E> implements Tensor<E>
   public boolean equals(Object o)
   {
     if (this == o) return true;
-    if (!(o instanceof AbstractImmutableTensor)) return false;
+    if (!(o instanceof DefaultTensor)) return false;
 
-    AbstractImmutableTensor<?> that = (AbstractImmutableTensor<?>) o;
+    DefaultTensor<?> that = (DefaultTensor<?>) o;
 
     E[] thisArray = newArray(this, this.size());
 
@@ -167,23 +116,6 @@ public abstract class AbstractImmutableTensor<E> implements Tensor<E>
     int result = Arrays.hashCode(elements);
     result = 31 * result + Arrays.hashCode(this.indexSizes());
     return result;
-  }
-
-  @Override
-  public Tensor<E> project(final int[] projectionIndexPositions, final int[] projectionIndexSizes)
-  {
-
-    final int[] newIndexSizes = IndexUtils.add(indexSizes(),projectionIndexPositions,projectionIndexSizes);
-
-    return new AbstractImmutableTensor<E>(newIndexSizes)
-    {
-      @Override
-      public E get(int... tensorIndex)
-      {
-        int[] innerIndex = IndexUtils.remove(tensorIndex,projectionIndexPositions);
-        return AbstractImmutableTensor.this.get(innerIndex);
-      }
-    };
   }
 
   @Override
@@ -224,8 +156,16 @@ public abstract class AbstractImmutableTensor<E> implements Tensor<E>
   @Override
   public <T> T[] toArray(T[] a)
   {
+    E[] elementData = newArray(this,_size);
 
-    return (T[]) newArray(this,size());
+    if (a.length < _size)
+      // Make a new array of a's runtime type, but my contents:
+      return (T[]) Arrays.copyOf(elementData, _size, a.getClass());
+
+	  System.arraycopy(elementData, 0, a, 0, _size);
+    if (a.length > _size)
+        a[_size] = null;
+    return a;
   }
 
   @Override
@@ -262,5 +202,74 @@ public abstract class AbstractImmutableTensor<E> implements Tensor<E>
   public void clear()
   {
     throw new UnsupportedOperationException("Tensors are Immutable");
+  }
+
+  public static <E> DefaultTensor<E> create(IndexedGetter<E> aIndexedGetter,int[] aIndexSizes)
+
+  {return new DefaultTensor<E>(aIndexedGetter, aIndexSizes, aIndexSizes.length, IndexUtils.calcNumElements(aIndexSizes));}
+
+  public final static <E> DefaultTensor<E> create(Tensor<E> aTensor)
+  {
+    E[] tensorRep = ArrayUtils.newArray(aTensor,aTensor.size());
+    int[] indexSizes = aTensor.indexSizes();
+    return DefaultTensor.create(new DefaultIndexGetter<E>(tensorRep,IndexUtils.createBasis(indexSizes)),indexSizes);
+  }
+
+  public static final class DefaultIndexGetter<E> implements IndexedGetter<E>
+  {
+    private final E[] _tensorRepresentation;
+    private final int[] _basis;
+
+    DefaultIndexGetter(E[] aTensorRepresentation,
+                       int[] aBasis
+    )
+    {
+      _basis = aBasis;
+      _tensorRepresentation = aTensorRepresentation;
+    }
+
+    @Override
+    public E get(int... index)
+    {
+      return _tensorRepresentation[IndexUtils.flattenTensorIndex(index,_basis)];
+    }
+
+    public static <E> Builder getBuilder(final int[] indexSizes)
+    {
+      @SuppressWarnings("unchecked")//casting an array that only contains nulls is safe
+      E[] emptyArrayRepresentation = (E[]) new Object[IndexUtils.calcNumElements(indexSizes)];
+      return new Builder<E>(IndexUtils.createBasis(indexSizes),emptyArrayRepresentation);
+    }
+
+    public static class Builder<E>
+    {
+      private final E[] _tensorRepresentation;
+      private final int[] _basis;
+
+      private Builder(int[] aBasis,E[] aTensorRepresentation)
+      {
+        _basis = aBasis;
+        _tensorRepresentation = aTensorRepresentation;
+      }
+
+      public Builder set(E aElement, int... index)
+      {
+        _tensorRepresentation[IndexUtils.flattenTensorIndex(index,_basis)] = aElement;
+        return this;
+      }
+
+      public Builder addAll(Iterable<E> elements)
+      {
+        int i = 0;
+        for (E element : elements)
+          _tensorRepresentation[i++] = element;
+        return this;
+      }
+
+      public DefaultIndexGetter<E> build()
+      {
+        return new DefaultIndexGetter<E>(_tensorRepresentation, _basis);
+      }
+    }
   }
 }

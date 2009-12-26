@@ -3,9 +3,7 @@ package com.google.mattmo;
 import com.google.common.collect.Iterables;
 import org.junit.Assert;
 import org.junit.Test;
-
 import java.util.Arrays;
-
 
 public class DefaultTensorTest
 {
@@ -17,7 +15,25 @@ public class DefaultTensorTest
    * varying second index goes left to right
    * varying first index goes up to down.
    */
-  private final Tensor<Integer> tensor = DefaultImmutableTensor.create(new int[]{2, 2}, 5, 6, 7, 8);
+  private final Tensor<Integer> tensor = DefaultTensor.create(new IndexedGetter<Integer>()
+   {
+     @Override
+     public Integer get(int... index)
+     {
+       int i = index[0];
+       int j = index[1];
+       if(i==0 && j==0)
+         return 5;
+       else if(i==0 && j==1)
+         return 6;
+       else if(i==1 && j==0)
+         return 7;
+       else if(i==1 && j==1)
+         return 8;
+       else
+        throw new IllegalArgumentException();
+     }
+   },new int[]{2,2});
 
 
   @Test
@@ -30,33 +46,6 @@ public class DefaultTensorTest
 
   }
 
-  @Test
-  public void testScalarSubTensors()
-  {
-    int[] scalarIndexSizes = new int[0];
-
-    Assert.assertEquals(DefaultImmutableTensor.create(scalarIndexSizes, 5), tensor.contract(0, 0));
-    Assert.assertEquals(DefaultImmutableTensor.create(scalarIndexSizes, 6), tensor.contract(0, 1));
-    Assert.assertEquals(DefaultImmutableTensor.create(scalarIndexSizes, 7), tensor.contract(1, 0));
-    Assert.assertEquals(DefaultImmutableTensor.create(scalarIndexSizes, 8), tensor.contract(1, 1));
-  }
-
-  @Test
-  public void testVectorSubTensors()
-  {
-    int[] vectorIndexSizes = new int[]{2};
-
-    Assert.assertEquals(DefaultImmutableTensor.create(vectorIndexSizes, 5, 6), tensor.contract(0, null));
-    Assert.assertEquals(DefaultImmutableTensor.create(vectorIndexSizes, 7, 8), tensor.contract(1, null));
-    Assert.assertEquals(DefaultImmutableTensor.create(vectorIndexSizes, 5, 7), tensor.contract(null, 0));
-    Assert.assertEquals(DefaultImmutableTensor.create(vectorIndexSizes, 6, 8), tensor.contract(null, 1));
-  }
-
-  @Test
-  public void testSelfSubTensor()
-  {
-    Assert.assertEquals(tensor, tensor.contract(null, null));
-  }
 
   @Test
   public void testNumElements()
@@ -75,23 +64,6 @@ public class DefaultTensorTest
   {
     Assert.assertEquals(2, tensor.order());
   }
-
-  @Test
-  public void testProject()
-  {
-    Tensor<Integer> projectedTensor = tensor.project(new int[]{0},new int[]{2});
-
-    Assert.assertEquals(5, projectedTensor.get(0,0,0).intValue());
-    Assert.assertEquals(6, projectedTensor.get(0,0,1).intValue());
-    Assert.assertEquals(7, projectedTensor.get(0,1,0).intValue());
-    Assert.assertEquals(8, projectedTensor.get(0,1,1).intValue());
-    Assert.assertEquals(5, projectedTensor.get(1,0,0).intValue());
-    Assert.assertEquals(6, projectedTensor.get(1,0,1).intValue());
-    Assert.assertEquals(7, projectedTensor.get(1,1,0).intValue());
-    Assert.assertEquals(8, projectedTensor.get(1,1,1).intValue());
-
-  }
-
 
   @Test
   public void testIterable()

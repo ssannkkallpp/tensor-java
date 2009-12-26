@@ -5,18 +5,18 @@ import com.markit.mtk.collections.Pair;
 import com.markit.mtk.collections.Tuple;
 import com.markit.mtk.collections.func.*;
 
+import static com.google.mattmo.Tensors.combine;
+import static com.google.mattmo.Tensors.transform;
+import static com.google.mattmo.TensorResizingMethods.*;
+
 
 public final class NumericalOperations
 {
-  private NumericalOperations()
-  {
-  }
-
-  ;
+  private NumericalOperations(){};
 
   public static Tensor<Double> add(final Tensor<Double> leftTensor, final Tensor<Double> rightTensor)
   {
-    return TensorOperations.applyBinaryFunction(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
+    return combine(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
     {
       @Override
       public Double apply(Double leftItem, Double rightItem)
@@ -28,7 +28,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> subtract(final Tensor<Double> leftTensor, final Tensor<Double> rightTensor)
   {
-    return TensorOperations.applyBinaryFunction(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
+    return combine(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
     {
       @Override
       public Double apply(Double leftItem, Double rightItem)
@@ -40,7 +40,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> multiply(final Tensor<Double> leftTensor, final Tensor<Double> rightTensor)
   {
-    return TensorOperations.applyBinaryFunction(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
+    return combine(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
     {
       @Override
       public Double apply(Double leftItem, Double rightItem)
@@ -52,7 +52,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> divide(final Tensor<Double> leftTensor, final Tensor<Double> rightTensor)
   {
-    return TensorOperations.applyBinaryFunction(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
+    return combine(leftTensor, rightTensor, new BinaryFunction<Double, Double, Double>()
     {
       @Override
       public Double apply(Double leftItem, Double rightItem)
@@ -64,7 +64,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> pow(final Tensor<Double> tensor,final double factor)
   {
-    return TensorOperations.applyFunction(tensor,new Function<Double, Double>()
+    return transform(tensor,new Function<Double, Double>()
     {
       @Override
       public Double apply(Double aDouble)
@@ -76,7 +76,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> scale(final Tensor<Double> tensor, final double scalar)
   {
-    return TensorOperations.applyFunction(tensor, new Function<Double, Double>()
+    return transform(tensor, new Function<Double, Double>()
     {
       @Override
       public Double apply(Double item)
@@ -88,11 +88,19 @@ public final class NumericalOperations
 
   public static Tensor<Double> mean(final Tensor<Double> tensor, int... averagingIndices)
   {
-    Iterable<Tensor<Double>> tensorIterable = tensor.contractedTensorIterable(averagingIndices);
+    Iterable<Tensor<Double>> tensorIterable = contractedTensorIterable(tensor,averagingIndices);
 
     int[] retIndexSizes = IndexUtils.remove(tensor.indexSizes(),averagingIndices);
 
-    Tensor<Double> initialTensor = DefaultImmutableTensor.create(retIndexSizes, 0.0);
+    Tensor<Double> initialTensor = DefaultTensor.create(new IndexedGetter<Double>()
+    {
+      @Override
+      public Double get(int... index)
+      {
+        return 0.0;
+      }
+    }, retIndexSizes);
+
     Tuple<Tensor<Double>,Integer> initialTuple = Pair.create(initialTensor,0);
 
     Tuple<Tensor<Double>,Integer> sum =  Actions.reduce(tensorIterable,new BinaryFunction<Tuple<Tensor<Double>, Integer>, Tensor<Double>, Tuple<Tensor<Double>, Integer>>()
@@ -109,7 +117,7 @@ public final class NumericalOperations
 
   public static Tensor<Double> sqrt(Tensor<Double> tensor)
   {
-    return TensorOperations.applyFunction(tensor,new Function<Double, Double>()
+    return transform(tensor,new Function<Double, Double>()
     {
       @Override
       public Double apply(Double aDouble)
@@ -129,7 +137,6 @@ public final class NumericalOperations
     return sqrt(var(tensor,averagingIndices));
   }
 
-
   public static Tensor<Double> nthMoment(final int n, final Tensor<Double> tensor, final int... averagingIndices)
   {
     final Tensor<Double> mean = mean(tensor,averagingIndices);
@@ -137,14 +144,22 @@ public final class NumericalOperations
     final int[] indexSizes = tensor.indexSizes();
     final int[] averagingIndicesSizes = IndexUtils.retain(indexSizes,averagingIndices);
 
-    final Tensor<Double> projectedAverage = mean.project(averagingIndices,averagingIndicesSizes);
+    final Tensor<Double> projectedAverage = project(mean,averagingIndices,averagingIndicesSizes);
 
 
-    Iterable<Tensor<Double>> tensorIterable = tensor.contractedTensorIterable(averagingIndices);
+    Iterable<Tensor<Double>> tensorIterable = contractedTensorIterable(tensor,averagingIndices);
 
     int[] retIndexSizes = IndexUtils.remove(tensor.indexSizes(),averagingIndices);
 
-    Tensor<Double> initialTensor = DefaultImmutableTensor.create(retIndexSizes, 0.0);
+    Tensor<Double> initialTensor =  DefaultTensor.create(new IndexedGetter<Double>()
+    {
+      @Override
+      public Double get(int... index)
+      {
+        return 0.0;
+      }
+    }, retIndexSizes);
+
     Tuple<Tensor<Double>,Integer> initialTuple = Pair.create(initialTensor,0);
 
     Tuple<Tensor<Double>,Integer> sum = Actions.reduce(tensorIterable,new BinaryFunction<Tuple<Tensor<Double>, Integer>, Tensor<Double>, Tuple<Tensor<Double>, Integer>>()
@@ -155,7 +170,6 @@ public final class NumericalOperations
         return Pair.create(add(leftItem.getFirst(), pow(subtract(rightTensor,projectedAverage),n)),leftItem.getSecond()+1);
       }
     },initialTuple);
-
 
     return scale(sum.getFirst(),1/sum.getSecond());
   }
@@ -176,16 +190,16 @@ public final class NumericalOperations
 
     final int[] indexSizes = IndexUtils.remove(leftTensor.indexSizes(),leftMultiplyingIndices);
 
-    return new AbstractImmutableTensor<Double>(indexSizes)
+    return DefaultTensor.create(new IndexedGetter<Double>()
     {
       @Override
-      public Double get(int... tensorIndex)
+      public Double get(int... index)
       {
-        int[] leftFixedIndexPositions = removeFromIndexPositions(leftMultiplyingIndices,indexSizes().length);//not the multiplying ones.
-        int[] rightFixedIndexPositions = removeFromIndexPositions(rightMultiplyingIndices,indexSizes().length);//not the multiplying ones.
+        int[] leftFixedIndexPositions = removeFromIndexPositions(leftMultiplyingIndices,leftTensor.indexSizes().length);//not the multiplying ones.
+        int[] rightFixedIndexPositions = removeFromIndexPositions(rightMultiplyingIndices,rightTensor.indexSizes().length);//not the multiplying ones.
 
-        Tensor<Double> contractedLeftTensor = leftTensor.contract(leftFixedIndexPositions,tensorIndex);
-        Tensor<Double> contractedRightTensor = rightTensor.contract(rightFixedIndexPositions,tensorIndex);
+        Tensor<Double> contractedLeftTensor = contract(leftTensor,leftFixedIndexPositions,index);
+        Tensor<Double> contractedRightTensor = contract(rightTensor,rightFixedIndexPositions,index);
 
         Tensor<Double> elementWiseMult = multiply(contractedLeftTensor,contractedRightTensor);
 
@@ -198,7 +212,7 @@ public final class NumericalOperations
           }
         });
       }
-    };
+    }, indexSizes);
   }
 
   private static int[] removeFromIndexPositions(int[] indicesToRemove, int length)
@@ -214,25 +228,5 @@ public final class NumericalOperations
     }
 
     return retVal;
-  }
-
-  public static void main(String[] args)
-  {
-    Tensor<Double> bob = new AbstractImmutableTensor<Double>(2,2)
-    {
-      @Override
-      public Double get(int... tensorIndex)
-      {
-        if(tensorIndex[0]==tensorIndex[1])
-          return 1.0;
-        else
-          return 0.0;
-      }
-    };
-
-    Tensor<Double> bobbob = tensorMult(bob,bob,new int[]{0},new int[]{1});
-    bobbob.get(0,0);
-
-    int y = 8;
   }
 }
