@@ -1,20 +1,15 @@
 package com.google.mattmo;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.markit.mtk.collections.func.BinaryFunction;
+
 import java.util.Collection;
-import java.util.Iterator;
+import java.util.List;
 
-/**
- * @author Matthew Gretton
- * @param <E>
- */
-public interface Tensor<E> extends Collection<E>
+public interface Tensor<E> extends Iterable<E>
 {
-  //Tensor methods
-  public E get(final int... tensorIndex);
-  public int[] indexSizes();
-  public int order();
+  ImmutableList<Integer> indexSizes();
+  E get(Integer... indices);
 }
-
-
-
 

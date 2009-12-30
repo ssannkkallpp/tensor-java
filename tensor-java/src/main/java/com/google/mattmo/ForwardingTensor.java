@@ -1,56 +1,139 @@
 package com.google.mattmo;
 
 import com.google.common.base.Function;
+import com.markit.mtk.collections.func.BinaryFunction;
 
 import java.util.Collection;
 import java.util.Iterator;
 
-/**
- * Delegates all methods to the tensor supplied in the constructor.
- */
 public class ForwardingTensor<E> implements Tensor<E>
 {
   private final Tensor<E> _tensor;
 
-  public ForwardingTensor(Tensor<E> aTensor)
+  public ForwardingTensor(Tensor<E> _tensor)
   {
-    _tensor = aTensor;
+    this._tensor = _tensor;
   }
 
   @Override
-  public E get(int... tensorIndex) {return _tensor.get(tensorIndex);}
+  public int[] indexSizes()
+  {
+    return _tensor.indexSizes();
+  }
+
   @Override
-  public int[] indexSizes() {return _tensor.indexSizes();}
+  public int order()
+  {
+    return _tensor.order();
+  }
   @Override
-  public int order() {return _tensor.order();}
+  public Tensor<E> contract(int[] fixedPos, int[] fixedVal)
+  {
+    return _tensor.contract(fixedPos, fixedVal);
+  }
   @Override
-  public boolean add(E o) {return _tensor.add(o);}
+  public <P extends Tensor<E>> Iterable<P> contractedTensorIterable(int... iteratingIndexPositions)
+  {
+    return _tensor.contractedTensorIterable(iteratingIndexPositions);
+  }
   @Override
-  public boolean addAll(Collection<? extends E> c) {return _tensor.addAll(c);}
+  public Tensor<E> project(int[] projectionIndexPositions, int[] projectionIndexSizes)
+  {
+    return _tensor.project(projectionIndexPositions, projectionIndexSizes);
+  }
   @Override
-  public void clear() {_tensor.clear();}
+  public Tensor<E> apply(Function<E, E> eeFunction)
+  {
+    return _tensor.apply(eeFunction);
+  }
   @Override
-  public boolean contains(Object o) {return _tensor.contains(o);}
+  public Tensor<E> apply(Tensor<E> aTensor, BinaryFunction<E, E, E> eeeBinaryFunction)
+  {
+    return _tensor.apply(aTensor, eeeBinaryFunction);
+  }
   @Override
-  public boolean containsAll(Collection<?> c) {return _tensor.containsAll(c);}
+  public Tensor<E> apply(E value, BinaryFunction<E, E, E> eeeBinaryFunction)
+  {
+    return _tensor.apply(value, eeeBinaryFunction);
+  }
   @Override
-  public boolean equals(Object o) {return _tensor.equals(o);}
+  public int size()
+  {
+    return _tensor.size();
+  }
   @Override
-  public int hashCode() {return _tensor.hashCode();}
+  public boolean isEmpty()
+  {
+    return _tensor.isEmpty();
+  }
   @Override
-  public boolean isEmpty() {return _tensor.isEmpty();}
+  public boolean contains(Object o)
+  {
+    return _tensor.contains(o);
+  }
+
+  public Iterator<E> iterator()
+  {
+    return _tensor.iterator();
+  }
   @Override
-  public Iterator<E> iterator() {return _tensor.iterator();}
+  public Object[] toArray()
+  {
+    return _tensor.toArray();
+  }
   @Override
-  public boolean remove(Object o) {return _tensor.remove(o);}
+  public <T> T[] toArray(T[] a)
+  {
+    return _tensor.toArray(a);
+  }
   @Override
-  public boolean removeAll(Collection<?> c) {return _tensor.removeAll(c);}
+  public boolean add(E e)
+  {
+    return _tensor.add(e);
+  }
   @Override
-  public boolean retainAll(Collection<?> c) {return _tensor.retainAll(c);}
+  public boolean remove(Object o)
+  {
+    return _tensor.remove(o);
+  }
   @Override
-  public int size() {return _tensor.size();}
+  public boolean containsAll(Collection<?> c)
+  {
+    return _tensor.containsAll(c);
+  }
   @Override
-  public Object[] toArray() {return _tensor.toArray();}
+  public boolean addAll(Collection<? extends E> c)
+  {
+    return _tensor.addAll(c);
+  }
   @Override
-  public <T> T[] toArray(T[] a) {return _tensor.toArray(a);}
+  public boolean removeAll(Collection<?> c)
+  {
+    return _tensor.removeAll(c);
+  }
+  @Override
+  public boolean retainAll(Collection<?> c)
+  {
+    return _tensor.retainAll(c);
+  }
+  @Override
+  public void clear()
+  {
+    _tensor.clear();
+  }
+  @Override
+  public boolean equals(Object o)
+  {
+    return _tensor.equals(o);
+  }
+  @Override
+  public int hashCode()
+  {
+    return _tensor.hashCode();
+  }
+  @Override
+  public E get(int... index)
+  {
+    return _tensor.get(index);
+  }
 }

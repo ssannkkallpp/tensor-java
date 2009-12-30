@@ -1,5 +1,7 @@
 package com.google.mattmo;
 
+import com.google.common.base.Function;
+
 /**
  * IndexedGetter
  *
@@ -7,5 +9,5 @@ package com.google.mattmo;
  */
 public interface IndexedGetter<E>
 {
-  E get(int... index);  
+  E get(Integer... index);
 }

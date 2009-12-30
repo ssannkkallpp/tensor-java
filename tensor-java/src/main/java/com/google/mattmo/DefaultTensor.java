@@ -1,16 +1,15 @@
 package com.google.mattmo;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.AbstractIterator;
-import com.google.common.collect.Iterables;
+import com.google.common.base.Function;
+import com.google.common.collect.*;
+import com.google.mattmo.utils.IndexUtils;
 import com.markit.mtk.collections.func.Actions;
+import com.markit.mtk.collections.func.BinaryFunction;
+import com.markit.mtk.collections.func.Reducer;
+import com.markit.mtk.collections.func.SimpleReducer;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-
-import static com.google.mattmo.ArrayUtils.newArray;
+import java.util.*;
+import static com.google.mattmo.utils.ArrayUtils.newArray;
 
 /**
  *
@@ -20,49 +19,43 @@ import static com.google.mattmo.ArrayUtils.newArray;
 public final class DefaultTensor<E> implements Tensor<E>
 {
   private final IndexedGetter<E> _indexedGetter;
-  private final int[] _indexSizes;
-  private final int _order;
-  private final int _size;
+  private final ImmutableList<Integer> _indexSizes;
 
   private DefaultTensor(IndexedGetter<E> aIndexedGetter,
-                       int[] aIndexSizes,
-                       int aOrder,
-                       int aSize)
+                        ImmutableList<Integer> aIndexSizes)
   {
     _indexedGetter = aIndexedGetter;
     _indexSizes = aIndexSizes;
-    _order = aOrder;
-    _size = aSize;
   }
 
   @Override
-  public E get(int... tensorIndex)
+  public E get(Integer... tensorIndex)
   {
     return _indexedGetter.get(tensorIndex);
   }
 
   @Override
-  public int[] indexSizes()
+  public ImmutableList<Integer> indexSizes()
   {
     return _indexSizes;
   }
 
-  @Override
-  public int order()
+  private int size()
   {
-    return _order;
-  }
-
-  @Override
-  public int size()
-  {
-    return _size;
+    return Actions.reduce(_indexSizes,new SimpleReducer<Integer>()
+    {
+      @Override
+      public Integer apply(Integer leftItem, Integer rightItem)
+      {
+        return leftItem*rightItem;
+      }
+    });
   }
 
   @Override
   public Iterator<E> iterator()
   {
-    final int[] basis = IndexUtils.createBasis(indexSizes());
+    final int[] basis = IndexUtils.createBasis(_indexSizes);
     final int size = size();
 
     return new AbstractIterator<E>()
@@ -78,16 +71,14 @@ public final class DefaultTensor<E> implements Tensor<E>
       }
     };
   }
-  
+
   @Override
   public String toString()
   {
 
-    E[] internalRep = newArray(this, this.size());
-
-    return "DefaultImmutableTensor{" +
-        "flattenedTensor =" + (Arrays.asList(internalRep)) +
-        ", index sizes =" + Arrays.toString(indexSizes()) +
+    return "DefaultTensor{" +
+        "flattenedTensor=" + Iterables.toString(this) +
+        ", indexSizes=" + _indexSizes +
         '}';
   }
 
@@ -95,12 +86,11 @@ public final class DefaultTensor<E> implements Tensor<E>
   public boolean equals(Object o)
   {
     if (this == o) return true;
-    if (!(o instanceof DefaultTensor)) return false;
+    if (!(o instanceof Tensor)) return false;
 
     DefaultTensor<?> that = (DefaultTensor<?>) o;
 
     E[] thisArray = newArray(this, this.size());
-
     Object[] thatArray = newArray(that, that.size());
 
     if (!Arrays.equals(this.indexSizes(), that.indexSizes())) return false;
@@ -118,158 +108,16 @@ public final class DefaultTensor<E> implements Tensor<E>
     return result;
   }
 
-  @Override
-  public boolean isEmpty()
-  {
-    return Iterables.isEmpty(this);
-  }
-
-  @Override
-  public boolean contains(Object o)
-  {
-    return Iterables.contains(this,o);
-  }
-
-  @Override
-  public boolean containsAll(final Collection<?> c)
-  {
-    final Collection<Object> bob = new ArrayList<Object>();
-
-    Actions.<Collection<Object>,Object>addToCollectionWhere(this,bob,new Predicate<Object>()
-    {
-      @Override
-      public boolean apply(Object o)
-      {
-        return !bob.contains(o) && c.contains(o);
-      }
-    });
-
-    return bob.size()==c.size();
-  }
-
-  @Override
-  public E[] toArray()
-  {
-    return newArray(this,size());
-  }
-
-  @Override
-  public <T> T[] toArray(T[] a)
-  {
-    E[] elementData = newArray(this,_size);
-
-    if (a.length < _size)
-      // Make a new array of a's runtime type, but my contents:
-      return (T[]) Arrays.copyOf(elementData, _size, a.getClass());
-
-	  System.arraycopy(elementData, 0, a, 0, _size);
-    if (a.length > _size)
-        a[_size] = null;
-    return a;
-  }
-
-  @Override
-  public boolean add(E e)
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
-  @Override
-  public boolean remove(Object o)
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
-  @Override
-  public boolean addAll(Collection<? extends E> c)
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
-  @Override
-  public boolean removeAll(Collection<?> c)
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
-  @Override
-  public boolean retainAll(Collection<?> c)
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
-  @Override
-  public void clear()
-  {
-    throw new UnsupportedOperationException("Tensors are Immutable");
-  }
-
   public static <E> DefaultTensor<E> create(IndexedGetter<E> aIndexedGetter,int[] aIndexSizes)
 
-  {return new DefaultTensor<E>(aIndexedGetter, aIndexSizes, aIndexSizes.length, IndexUtils.calcNumElements(aIndexSizes));}
+  {return new DefaultTensor<E>(aIndexedGetter, aIndexSizes);}
 
-  public final static <E> DefaultTensor<E> create(Tensor<E> aTensor)
+  public final static <E> DefaultTensor<E> create(Tensor<E> aTensor,Class<E> clazz)
   {
-    E[] tensorRep = ArrayUtils.newArray(aTensor,aTensor.size());
+    E[] tensorRep = Iterables.toArray(aTensor,clazz);
+
     int[] indexSizes = aTensor.indexSizes();
     return DefaultTensor.create(new DefaultIndexGetter<E>(tensorRep,IndexUtils.createBasis(indexSizes)),indexSizes);
   }
-
-  public static final class DefaultIndexGetter<E> implements IndexedGetter<E>
-  {
-    private final E[] _tensorRepresentation;
-    private final int[] _basis;
-
-    DefaultIndexGetter(E[] aTensorRepresentation,
-                       int[] aBasis
-    )
-    {
-      _basis = aBasis;
-      _tensorRepresentation = aTensorRepresentation;
-    }
-
-    @Override
-    public E get(int... index)
-    {
-      return _tensorRepresentation[IndexUtils.flattenTensorIndex(index,_basis)];
-    }
-
-    public static <E> Builder getBuilder(final int[] indexSizes)
-    {
-      @SuppressWarnings("unchecked")//casting an array that only contains nulls is safe
-      E[] emptyArrayRepresentation = (E[]) new Object[IndexUtils.calcNumElements(indexSizes)];
-      return new Builder<E>(IndexUtils.createBasis(indexSizes),emptyArrayRepresentation);
-    }
-
-    public static class Builder<E>
-    {
-      private final E[] _tensorRepresentation;
-      private final int[] _basis;
-
-      private Builder(int[] aBasis,E[] aTensorRepresentation)
-      {
-        _basis = aBasis;
-        _tensorRepresentation = aTensorRepresentation;
-      }
-
-      public Builder set(E aElement, int... index)
-      {
-        _tensorRepresentation[IndexUtils.flattenTensorIndex(index,_basis)] = aElement;
-        return this;
-      }
-
-      public Builder addAll(Iterable<E> elements)
-      {
-        int i = 0;
-        for (E element : elements)
-          _tensorRepresentation[i++] = element;
-        return this;
-      }
-
-      public DefaultIndexGetter<E> build()
-      {
-        return new DefaultIndexGetter<E>(_tensorRepresentation, _basis);
-      }
-    }
-  }
 }
+
