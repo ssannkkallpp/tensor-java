@@ -1,0 +1,1 @@
+For the purposes of this project a tensor is a data structure structure that hold multidimensional data.
